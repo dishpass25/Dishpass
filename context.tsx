@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Reservation, Subscription } from './types';
-import { MOCK_SUBSCRIPTIONS } from './constants';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User, Reservation, Plan, Transaction } from './types';
+import { PLANS } from './constants';
 
 interface AppContextType {
   user: User;
@@ -9,28 +9,35 @@ interface AppContextType {
   toggleStaffMode: () => void;
   reservations: Reservation[];
   addReservation: (res: Reservation) => void;
-  subscriptions: Subscription[];
+  
+  // New Workflow Methods
+  plans: Plan[];
+  buyPlan: (planId: string) => void;
+  cancelSubscription: () => void;
   deductCredits: (amount: number) => boolean;
   addCredits: (amount: number) => void;
+  transactions: Transaction[];
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// Initial user state adjusted for the "Funnel" demo (No plan initially)
 const INITIAL_USER: User = {
   id: 'u1',
   name: 'Alex Johnson',
   email: 'alex@dishpass.com',
-  credits: 125,
+  credits: 0, 
   referralCode: 'ALEX2024',
   isRestaurantStaff: false,
-  avatar: 'https://picsum.photos/100/100?random=50'
+  avatar: 'https://picsum.photos/100/100?random=50',
+  subscriptionStatus: 'none',
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User>(INITIAL_USER);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [subscriptions] = useState<Subscription[]>(MOCK_SUBSCRIPTIONS);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -52,6 +59,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setReservations(prev => [...prev, res]);
   };
 
+  // 3.1 & 3.2 Workflow: Buy Plan (Initial or Upsell)
+  const buyPlan = (planId: string) => {
+    const plan = PLANS.find(p => p.id === planId);
+    if (!plan) return;
+
+    // Calculate Next Billing Date
+    const nextBilling = new Date();
+    nextBilling.setDate(nextBilling.getDate() + plan.durationDays);
+
+    // Determine Status (Trial vs Active)
+    // If it's the "Experience" plan (id: exp_unique), status is 'trial' per requirements
+    // If it's the "Monthly Trial" (id: ess_monthly_trial), status is 'active' but it was a trial price
+    const newStatus = plan.id === 'exp_unique' ? 'trial' : 'active';
+
+    // Find the renewal plan for the *next* cycle to set the correct next billing amount
+    const renewalPlanId = plan.renewalPlanId || plan.id;
+    const renewalPlan = PLANS.find(p => p.id === renewalPlanId);
+
+    setUser(prev => ({
+      ...prev,
+      credits: prev.credits + plan.credits, // 2. Allocation of Credits
+      currentPlanId: plan.id,
+      subscriptionStatus: newStatus,
+      nextBillingDate: nextBilling.toISOString(), // 3. Set Date
+      nextBillingAmount: renewalPlan ? renewalPlan.price : plan.price,
+    }));
+
+    // 4. Register Transaction
+    const newTx: Transaction = {
+      id: Math.random().toString(36).substr(2, 9),
+      userId: user.id,
+      planId: plan.id,
+      planName: plan.name,
+      amount: plan.price,
+      date: new Date().toISOString(),
+      type: 'purchase'
+    };
+    setTransactions(prev => [newTx, ...prev]);
+  };
+
+  // 3.2 Cancellation
+  const cancelSubscription = () => {
+    setUser(prev => ({
+      ...prev,
+      subscriptionStatus: 'cancelled',
+      nextBillingDate: undefined,
+      nextBillingAmount: undefined,
+      // Note: In a real backend, we would keep the date but stop the cron job.
+      // For UI, we show "Cancelled".
+    }));
+  };
+
+  // 3.4 Workflow: Consumo de Crédito
   const deductCredits = (amount: number) => {
     if (user.credits >= amount) {
       setUser(prev => ({ ...prev, credits: prev.credits - amount }));
@@ -60,6 +120,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
+  // Helper for admin/debug
   const addCredits = (amount: number) => {
     setUser(prev => ({ ...prev, credits: prev.credits + amount }));
   };
@@ -72,9 +133,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toggleStaffMode,
       reservations,
       addReservation,
-      subscriptions,
+      plans: PLANS,
+      buyPlan,
+      cancelSubscription,
       deductCredits,
-      addCredits
+      addCredits,
+      transactions
     }}>
       {children}
     </AppContext.Provider>

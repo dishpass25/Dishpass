@@ -12,10 +12,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const navItems = [
     { to: '/', icon: Home, label: 'Home' },
-    { to: '/restaurants', icon: Utensils, label: 'Eat' },
-    { to: '/credits', icon: Wallet, label: 'Credits' },
+    { to: '/restaurants', icon: Utensils, label: 'Comer' },
+    { to: '/credits', icon: Wallet, label: 'Créditos' },
     { to: '/community', icon: Users, label: 'Social' },
-    { to: '/profile', icon: UserIcon, label: 'Profile' },
+    { to: '/profile', icon: UserIcon, label: 'Perfil' },
   ];
 
   return (
@@ -39,14 +39,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               onClick={() => { /* Mock Map */ alert('Map feature coming soon!'); setIsFabOpen(false); }}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg animate-in slide-in-from-bottom-2 delay-75"
             >
-              <span>Map</span>
+              <span>Mapa</span>
               <Map className="w-5 h-5" />
             </button>
             <button 
               onClick={() => { setIsAiOpen(true); setIsFabOpen(false); }}
               className="flex items-center gap-2 bg-brand-500 text-white px-4 py-2 rounded-full shadow-lg animate-in slide-in-from-bottom-2 delay-100"
             >
-              <span>AI Chef</span>
+              <span>Chef IA</span>
               <Bot className="w-5 h-5" />
             </button>
           </>
