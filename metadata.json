@@ -1,0 +1,7 @@
+{
+  "name": "DISHpass",
+  "description": "A mobile-first dining subscription app with AI assistance, QR redemptions, and community features.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
