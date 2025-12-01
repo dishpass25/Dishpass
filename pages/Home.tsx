@@ -1,12 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context';
 import { useNavigate } from 'react-router-dom';
 import { Utensils, QrCode, Gift, ChevronRight, Star, HelpCircle, Wallet } from 'lucide-react';
 import { MOCK_RESTAURANTS } from '../constants';
 
+const HERO_PHRASES = [
+  "Hora de experimentar",
+  "Descubra novos sabores",
+  "O que vamos comer hoje?",
+  "Seus pratos favoritos aqui",
+  "Viva a experiência gastronômica",
+  "Sabor que cabe no bolso"
+];
+
 export const Home: React.FC = () => {
   const { user } = useApp();
   const navigate = useNavigate();
+  
+  // State for rotating phrases
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [fadeProp, setFadeProp] = useState('opacity-100');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Start fade out
+      setFadeProp('opacity-0');
+      
+      setTimeout(() => {
+        // Change text and fade in
+        setPhraseIndex((prev) => (prev + 1) % HERO_PHRASES.length);
+        setFadeProp('opacity-100');
+      }, 500); // Wait for fade out to finish (500ms matches duration-500)
+
+    }, 10000); // 10 seconds total cycle
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Achatar a lista de pratos para exibir nos destaques
   const featuredDishes = MOCK_RESTAURANTS.flatMap(r => 
@@ -21,12 +50,12 @@ export const Home: React.FC = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
       
       {/* --- HERO SECTION --- */}
-      <div className="relative h-[340px] w-full">
+      <div className="relative h-[280px] w-full">
         {/* Background Image */}
         <img 
-          src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" 
+          src="https://images.unsplash.com/photo-1544025162-d76694265947?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" 
           alt="Food Background" 
-          className="w-full h-full object-cover brightness-[0.6]"
+          className="w-full h-full object-cover brightness-[0.65]"
         />
         
         {/* Overlay Gradient */}
@@ -36,7 +65,7 @@ export const Home: React.FC = () => {
         <div className="absolute inset-0 flex flex-col p-6 pt-12">
           
           {/* Top Bar */}
-          <div className="flex justify-between items-start mb-12">
+          <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-white/80 text-sm font-medium mb-1">Olá,</p>
               <h1 className="text-3xl font-bold text-white leading-tight">{user.name}</h1>
@@ -63,14 +92,16 @@ export const Home: React.FC = () => {
           <div className="mt-auto pb-20">
              <div className="flex items-center gap-2 mb-2">
                 <span className="text-2xl">🍕</span>
-                <h2 className="text-2xl font-bold text-white">Hora de experimentar</h2>
+                <h2 className={`text-2xl font-bold text-white transition-opacity duration-500 ${fadeProp}`}>
+                  {HERO_PHRASES[phraseIndex]}
+                </h2>
              </div>
           </div>
         </div>
       </div>
 
       {/* --- ACTION CARDS (Negative Margin) --- */}
-      <div className="-mt-16 px-5 relative z-10">
+      <div className="-mt-24 px-5 relative z-10">
         <div className="grid grid-cols-2 gap-4">
           
           {/* Orange Card: Restaurants */}
@@ -87,17 +118,17 @@ export const Home: React.FC = () => {
             </div>
           </button>
 
-          {/* Purple Card: Credits/QR */}
+          {/* Green Card: Credits/QR */}
           <button 
             onClick={() => navigate('/credits')}
-            className="bg-[#d946ef] hover:bg-[#c026d3] text-white rounded-2xl p-4 h-36 flex flex-col justify-between shadow-lg shadow-fuchsia-500/20 transition-transform active:scale-95 text-left group"
+            className="bg-green-600 hover:bg-green-700 text-white rounded-2xl p-4 h-36 flex flex-col justify-between shadow-lg shadow-green-500/20 transition-transform active:scale-95 text-left group"
           >
             <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-colors">
               <QrCode className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-lg leading-tight">Usar<br/>Créditos</h3>
-              <p className="text-xs text-fuchsia-100 mt-1 opacity-90">Escaneie e aproveite</p>
+              <p className="text-xs text-green-100 mt-1 opacity-90">Escaneie e aproveite</p>
             </div>
           </button>
         </div>
@@ -111,28 +142,31 @@ export const Home: React.FC = () => {
         </div>
       </div>
 
-      {/* --- REFERRAL BANNER --- */}
-      <div className="px-5 mt-6">
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
+      {/* --- REFERRAL BANNER (Compact Blue) --- */}
+      <div className="px-5 mt-4">
+        <div className="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden flex items-center justify-between">
           {/* Decorative circles */}
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
           <div className="absolute bottom-0 left-10 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
 
-          <div className="relative z-10">
-            <div className="bg-white/20 w-12 h-12 rounded-2xl flex items-center justify-center mb-4 backdrop-blur-sm">
-               <Gift className="w-6 h-6" />
+          <div className="relative z-10 flex-1 mr-2">
+            <div className="flex items-center gap-2 mb-1">
+               <div className="bg-white/20 w-8 h-8 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                  <Gift className="w-4 h-4" />
+               </div>
+               <h3 className="text-lg font-bold">Indique e Ganhe!</h3>
             </div>
-            <h3 className="text-xl font-bold mb-1">Indique e Ganhe!</h3>
-            <p className="text-purple-100 text-sm mb-4 max-w-[80%]">
-              Convide amigos e ganhe créditos bônus para cada indicação
+            <p className="text-blue-50 text-xs leading-tight">
+              Ganhe créditos bônus indicando.
             </p>
-            <button 
-              onClick={() => navigate('/referrals')}
-              className="bg-white text-purple-600 px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-gray-50 transition-colors"
-            >
-              Começar Agora
-            </button>
           </div>
+          
+          <button 
+            onClick={() => navigate('/referrals')}
+            className="relative z-10 bg-white text-blue-600 px-4 py-2 rounded-lg font-bold text-xs shadow-sm hover:bg-gray-50 transition-colors whitespace-nowrap"
+          >
+            Convidar
+          </button>
         </div>
       </div>
 
