@@ -17,6 +17,15 @@ interface AppContextType {
   deductCredits: (amount: number) => boolean;
   addCredits: (amount: number) => void;
   transactions: Transaction[];
+
+  // Scanner Control
+  scanner: { isOpen: boolean; type: 'redeem' | 'validate' };
+  openScanner: (type: 'redeem' | 'validate') => void;
+  closeScanner: () => void;
+
+  // Geolocation
+  userLocation: { lat: number; lng: number } | null;
+  requestUserLocation: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -38,6 +47,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  
+  // Scanner State
+  const [scanner, setScanner] = useState<{ isOpen: boolean; type: 'redeem' | 'validate' }>({ 
+    isOpen: false, 
+    type: 'redeem' 
+  });
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -45,6 +61,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       document.documentElement.classList.remove('dark');
     }
+    // Tentar pegar localização silenciosamente ao iniciar
+    requestUserLocation();
   }, [theme]);
 
   const toggleTheme = () => {
@@ -69,8 +87,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     nextBilling.setDate(nextBilling.getDate() + plan.durationDays);
 
     // Determine Status (Trial vs Active)
-    // If it's the "Experience" plan (id: exp_unique), status is 'trial' per requirements
-    // If it's the "Monthly Trial" (id: ess_monthly_trial), status is 'active' but it was a trial price
     const newStatus = plan.id === 'exp_unique' ? 'trial' : 'active';
 
     // Find the renewal plan for the *next* cycle to set the correct next billing amount
@@ -106,8 +122,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       subscriptionStatus: 'cancelled',
       nextBillingDate: undefined,
       nextBillingAmount: undefined,
-      // Note: In a real backend, we would keep the date but stop the cron job.
-      // For UI, we show "Cancelled".
     }));
   };
 
@@ -125,6 +139,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUser(prev => ({ ...prev, credits: prev.credits + amount }));
   };
 
+  // Scanner Actions
+  const openScanner = (type: 'redeem' | 'validate') => {
+    setScanner({ isOpen: true, type });
+  };
+  
+  const closeScanner = () => {
+    setScanner(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Geolocation Service
+  const requestUserLocation = async () => {
+    if ('geolocation' in navigator) {
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setUserLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            });
+          },
+          (error) => {
+            console.log("Error getting location", error);
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       user,
@@ -138,7 +183,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       cancelSubscription,
       deductCredits,
       addCredits,
-      transactions
+      transactions,
+      scanner,
+      openScanner,
+      closeScanner,
+      userLocation,
+      requestUserLocation
     }}>
       {children}
     </AppContext.Provider>

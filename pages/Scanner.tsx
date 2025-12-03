@@ -1,109 +1,236 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { X, Camera, Check, AlertTriangle } from 'lucide-react';
+import { X, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { useApp } from '../context';
-import { MOCK_RESTAURANTS } from '../constants';
+import jsQR from 'jsqr';
 
-export const Scanner: React.FC = () => {
-  const navigate = useNavigate();
+// Agora exportamos como um componente Modal, não uma página
+export const ScannerModal: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { deductCredits, closeScanner, scanner } = useApp();
+  const { type, isOpen } = scanner;
+  
+  const [loadingCamera, setLoadingCamera] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<{ status: 'success' | 'error', message: string } | null>(null);
   const [isScanning, setIsScanning] = useState(true);
-  const [scanResult, setScanResult] = useState<{ status: 'success' | 'error', message: string, dish?: any } | null>(null);
-  const { deductCredits } = useApp();
+
+  // Reset state when opening
+  useEffect(() => {
+    if (isOpen) {
+      setIsScanning(true);
+      setScanResult(null);
+      setError(null);
+      setLoadingCamera(true);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
-    // Attempt to access camera
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      .then(stream => {
+    if (!isOpen) return;
+
+    let stream: MediaStream | null = null;
+    let animationFrameId: number;
+
+    const startCamera = async () => {
+      try {
+        setLoadingCamera(true);
+        const constraints = { video: { facingMode: 'environment' } };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute("playsinline", "true"); // required for iOS
+          
+          videoRef.current.onloadedmetadata = () => {
+             setLoadingCamera(false);
+             videoRef.current?.play().catch(e => console.error("Play error", e));
+             requestAnimationFrame(tick);
+          };
         }
-      })
-      .catch(err => console.error("Camera access error:", err));
-
-    return () => {
-      // Cleanup stream
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        console.error("Camera error:", err);
+        setLoadingCamera(false);
+        setError("Não foi possível acessar a câmera. Verifique permissões.");
       }
     };
-  }, []);
 
-  const handleSimulateScan = () => {
-    // Mocking a successful scan logic
-    // In real app, we would parse the QR frame
-    const mockDish = MOCK_RESTAURANTS[0].menu[0];
-    
-    // Attempt deduction (mocking user balance check here, though technically we'd query the user ID from QR)
-    // For demo purposes, we just assume the QR is valid.
-    
+    const tick = () => {
+      if (!videoRef.current || !canvasRef.current || !isScanning) return;
+
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+
+      if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        });
+
+        if (code) {
+          handleScan(code.data);
+        } else {
+          animationFrameId = requestAnimationFrame(tick);
+        }
+      } else {
+         animationFrameId = requestAnimationFrame(tick);
+      }
+    };
+
+    if (isScanning) {
+       startCamera();
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isScanning, isOpen]);
+
+  const handleScan = (data: string) => {
     setIsScanning(false);
-    setScanResult({
-      status: 'success',
-      message: `Redeemed: ${mockDish.name}`,
-      dish: mockDish
-    });
+    
+    // Simulação de processamento
+    setTimeout(() => {
+        if (type === 'redeem') {
+             const success = deductCredits(1);
+             if (success) {
+                 setScanResult({
+                     status: 'success',
+                     message: 'Pagamento de 1 crédito realizado!'
+                 });
+             } else {
+                 setScanResult({
+                     status: 'error',
+                     message: 'Saldo insuficiente.'
+                 });
+             }
+        } else {
+            setScanResult({
+                status: 'success',
+                message: 'Cliente validado!'
+            });
+        }
+    }, 300);
   };
 
+  const handleClose = () => {
+    closeScanner();
+  };
+
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
-      <div className="absolute top-4 left-4 z-20">
-        <button onClick={() => navigate('/')} className="text-white p-2 bg-black/50 rounded-full">
-          <X className="w-6 h-6" />
-        </button>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose}></div>
+      
+      {/* Modal Container - Styled to match image */}
+      <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl relative z-10 flex flex-col animate-in zoom-in-95 duration-300">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-800">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+            Escanear QR Code
+          </h2>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-8 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 min-h-[350px]">
+          
+          <canvas ref={canvasRef} className="hidden" />
+
+          {isScanning ? (
+            <div className="relative w-64 h-64 bg-black rounded-3xl overflow-hidden shadow-inner flex items-center justify-center">
+              
+              {!error ? (
+                 <video 
+                    ref={videoRef} 
+                    className="absolute inset-0 w-full h-full object-cover" 
+                    playsInline 
+                    muted
+                 />
+              ) : (
+                <div className="text-center p-4">
+                   <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-2" />
+                   <p className="text-xs text-white">{error}</p>
+                </div>
+              )}
+
+              {/* Scanning Line Animation */}
+              {!error && !loadingCamera && (
+                <div className="absolute inset-0 z-10">
+                   <div className="w-full h-1 bg-brand-500/80 shadow-[0_0_15px_rgba(249,115,22,0.8)] animate-[scan_2s_ease-in-out_infinite] absolute top-0" />
+                   {/* Corner markers */}
+                   <div className="absolute top-4 left-4 w-8 h-8 border-t-4 border-l-4 border-white/50 rounded-tl-lg"></div>
+                   <div className="absolute top-4 right-4 w-8 h-8 border-t-4 border-r-4 border-white/50 rounded-tr-lg"></div>
+                   <div className="absolute bottom-4 left-4 w-8 h-8 border-b-4 border-l-4 border-white/50 rounded-bl-lg"></div>
+                   <div className="absolute bottom-4 right-4 w-8 h-8 border-b-4 border-r-4 border-white/50 rounded-br-lg"></div>
+                </div>
+              )}
+
+              {loadingCamera && !error && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                   <Loader2 className="w-10 h-10 text-brand-500 animate-spin" />
+                </div>
+              )}
+            </div>
+          ) : (
+            // Result View
+            <div className="flex flex-col items-center justify-center w-full h-64 animate-in zoom-in">
+               {scanResult?.status === 'success' ? (
+                 <>
+                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                     <Check className="w-10 h-10 text-green-600" />
+                   </div>
+                   <p className="text-center font-bold text-gray-900 dark:text-white text-lg mb-1">Sucesso!</p>
+                   <p className="text-center text-sm text-gray-500 mb-6">{scanResult.message}</p>
+                 </>
+               ) : (
+                 <>
+                   <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                     <AlertTriangle className="w-10 h-10 text-red-500" />
+                   </div>
+                   <p className="text-center font-bold text-gray-900 dark:text-white text-lg mb-1">Ops!</p>
+                   <p className="text-center text-sm text-gray-500 mb-6">{scanResult?.message}</p>
+                 </>
+               )}
+               <button 
+                 onClick={() => { setIsScanning(true); setScanResult(null); }}
+                 className="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white px-6 py-2 rounded-xl font-bold text-sm"
+               >
+                 Escanear Novamente
+               </button>
+            </div>
+          )}
+
+          {/* Footer Text */}
+          {isScanning && (
+            <p className="mt-6 text-sm text-gray-500 text-center font-medium">
+              Aponte a câmera para o QR Code
+            </p>
+          )}
+
+        </div>
       </div>
       
-      <div className="flex-1 relative bg-gray-900 flex items-center justify-center overflow-hidden">
-        {isScanning ? (
-          <>
-            <video ref={videoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover opacity-70" />
-            
-            {/* Scanner Overlay */}
-            <div className="relative z-10 w-64 h-64 border-2 border-brand-500 rounded-2xl flex items-center justify-center">
-              <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-brand-500 -mt-1 -ml-1"></div>
-              <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-brand-500 -mt-1 -mr-1"></div>
-              <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-brand-500 -mb-1 -ml-1"></div>
-              <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-brand-500 -mb-1 -mr-1"></div>
-              <div className="w-full h-0.5 bg-red-500/80 animate-[ping_2s_ease-in-out_infinite]" />
-            </div>
-            
-            <p className="absolute bottom-32 text-white text-center w-full font-medium shadow-sm">Align QR code within frame</p>
-            
-            {/* Dev Only: Simulate Trigger */}
-            <button 
-              onClick={handleSimulateScan}
-              className="absolute bottom-10 bg-white text-black px-6 py-3 rounded-full font-bold flex items-center gap-2"
-            >
-              <Camera className="w-5 h-5" /> Simulate Scan
-            </button>
-          </>
-        ) : (
-          <div className="bg-white dark:bg-gray-800 w-4/5 p-6 rounded-2xl text-center animate-in zoom-in">
-            {scanResult?.status === 'success' ? (
-              <>
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Check className="w-8 h-8 text-green-600" />
-                </div>
-                <h2 className="text-xl font-bold dark:text-white mb-2">Success!</h2>
-                <p className="text-gray-500 mb-4">{scanResult.message}</p>
-                <div className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg mb-6">
-                  <p className="text-sm font-bold dark:text-white">- {scanResult.dish.credits} Credits</p>
-                </div>
-                <button onClick={() => setIsScanning(true)} className="w-full bg-brand-500 text-white py-3 rounded-xl font-bold">
-                  Scan Next
-                </button>
-              </>
-            ) : (
-              <div className="text-center">
-                 <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-2"/>
-                 <p className="mb-4">Error processing code.</p>
-                 <button onClick={() => setIsScanning(true)} className="bg-gray-200 px-4 py-2 rounded">Retry</button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <style>{`
+        @keyframes scan {
+          0% { top: 0%; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 };

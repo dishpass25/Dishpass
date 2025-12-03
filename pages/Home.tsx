@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context';
 import { useNavigate } from 'react-router-dom';
-import { Utensils, QrCode, Gift, ChevronRight, Star, HelpCircle, Wallet } from 'lucide-react';
+import { Utensils, QrCode, Gift, ChevronRight, Star, HelpCircle, Wallet, MapPin, RefreshCw } from 'lucide-react';
 import { MOCK_RESTAURANTS } from '../constants';
 
 const HERO_PHRASES = [
@@ -13,13 +14,33 @@ const HERO_PHRASES = [
   "Sabor que cabe no bolso"
 ];
 
+// Helper para calcular distância (Haversine)
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  var R = 6371; // Radius of the earth in km
+  var dLat = deg2rad(lat2-lat1);  // deg2rad below
+  var dLon = deg2rad(lon2-lon1); 
+  var a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+    ; 
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  var d = R * c; // Distance in km
+  return d;
+}
+
+function deg2rad(deg: number) {
+  return deg * (Math.PI/180)
+}
+
 export const Home: React.FC = () => {
-  const { user } = useApp();
+  const { user, openScanner, userLocation, requestUserLocation } = useApp();
   const navigate = useNavigate();
   
   // State for rotating phrases
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [fadeProp, setFadeProp] = useState('opacity-100');
+  const [isLocating, setIsLocating] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -37,14 +58,36 @@ export const Home: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Achatar a lista de pratos para exibir nos destaques
-  const featuredDishes = MOCK_RESTAURANTS.flatMap(r => 
-    r.menu.map(dish => ({
-      ...dish,
-      restaurantName: r.name,
-      restaurantRating: r.rating
-    }))
-  ).slice(0, 5); // Pegar apenas os primeiros 5 para demo
+  const handleLocationClick = async () => {
+    setIsLocating(true);
+    await requestUserLocation();
+    setTimeout(() => setIsLocating(false), 1000);
+  };
+
+  // Calcular pratos mais próximos ou destaques
+  const displayedDishes = useMemo(() => {
+    let restaurantsWithDistance = MOCK_RESTAURANTS.map(r => ({
+      ...r,
+      distance: userLocation 
+        ? getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, r.lat, r.lng)
+        : 0
+    }));
+
+    // Se tiver localização, ordena por distância
+    if (userLocation) {
+      restaurantsWithDistance.sort((a, b) => a.distance - b.distance);
+    }
+
+    // Achatar a lista de pratos
+    return restaurantsWithDistance.flatMap(r => 
+      r.menu.map(dish => ({
+        ...dish,
+        restaurantName: r.name,
+        restaurantRating: r.rating,
+        distance: r.distance
+      }))
+    ).slice(0, 6); // Pegar os top 6
+  }, [userLocation]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-24">
@@ -118,9 +161,9 @@ export const Home: React.FC = () => {
             </div>
           </button>
 
-          {/* Green Card: Credits/QR */}
+          {/* Green Card: Credits/QR - Open Scanner Modal */}
           <button 
-            onClick={() => navigate('/credits')}
+            onClick={() => openScanner('redeem')}
             className="bg-green-600 hover:bg-green-700 text-white rounded-2xl p-4 h-36 flex flex-col justify-between shadow-lg shadow-green-500/20 transition-transform active:scale-95 text-left group"
           >
             <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-colors">
@@ -131,14 +174,6 @@ export const Home: React.FC = () => {
               <p className="text-xs text-green-100 mt-1 opacity-90">Escaneie e aproveite</p>
             </div>
           </button>
-        </div>
-
-        {/* Carousel Dots (Decorative) */}
-        <div className="flex justify-center gap-2 mt-6 mb-2">
-           <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600"></div>
-           <div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-700"></div>
-           <div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-700"></div>
-           <div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-700"></div>
         </div>
       </div>
 
@@ -170,27 +205,47 @@ export const Home: React.FC = () => {
         </div>
       </div>
 
-      {/* --- FEATURED DISHES --- */}
+      {/* --- NEAREST DISHES --- */}
       <div className="mt-8 pb-4">
-        <div className="px-5 flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Pratos em Destaque</h3>
+        <div className="px-5 flex justify-between items-end mb-4">
+          <div>
+             <h3 className="text-lg font-extrabold text-gray-900 dark:text-white uppercase tracking-wider mb-1">
+               O Que Tem Próximo
+             </h3>
+             <button 
+               onClick={handleLocationClick} 
+               disabled={isLocating}
+               className="flex items-center gap-1.5 text-brand-600 dark:text-brand-400 text-xs font-bold hover:underline disabled:opacity-50"
+             >
+               {isLocating ? <RefreshCw className="w-3 h-3 animate-spin" /> : <MapPin className="w-3 h-3" />}
+               {userLocation ? 'Atualizar Localização' : 'Ativar Localização'}
+             </button>
+          </div>
           <button 
             onClick={() => navigate('/restaurants')}
-            className="text-sm font-medium text-gray-500 flex items-center hover:text-brand-500 transition-colors"
+            className="text-sm font-medium text-gray-500 flex items-center hover:text-brand-500 transition-colors mb-1"
           >
             Ver todos <ChevronRight className="w-4 h-4 ml-0.5" />
           </button>
         </div>
 
         <div className="flex overflow-x-auto gap-4 px-5 pb-6 no-scrollbar snap-x">
-          {featuredDishes.map((dish, idx) => (
+          {displayedDishes.map((dish, idx) => (
             <div 
               key={`${dish.id}-${idx}`}
-              onClick={() => navigate('/restaurants')} // In a real app, go to dish details
-              className="min-w-[160px] w-[160px] bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 snap-center overflow-hidden flex flex-col"
+              onClick={() => navigate('/restaurants')} 
+              className="min-w-[160px] w-[160px] bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 snap-center overflow-hidden flex flex-col relative"
             >
               <div className="h-28 w-full relative">
                  <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" />
+                 
+                 {/* Distance Badge */}
+                 <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                    <MapPin className="w-3 h-3 text-orange-400" />
+                    <span className="text-[10px] text-white font-bold">
+                       {userLocation ? `${dish.distance.toFixed(1)} km` : '? km'}
+                    </span>
+                 </div>
               </div>
               
               <div className="p-3 flex-1 flex flex-col">

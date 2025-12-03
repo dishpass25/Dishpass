@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Map, Star, MapPin, Plus, X, Navigation, Minus } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Search, Map, Star, MapPin, Plus } from 'lucide-react';
 import { MOCK_RESTAURANTS } from '../constants';
+import { RestaurantMap } from '../components/RestaurantMap';
 
 const CATEGORIES = ['Todos', 'Brasileira', 'Italiana', 'Japonesa', 'Mexicana', 'Lanches'];
 const CREDIT_FILTERS = ['Todos', '1 Crédito', '2 Créditos', '3 Créditos', '+4 Créditos'];
 
 export const Restaurants: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isMapOpen = searchParams.get('map') === 'true';
+
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [activeCredit, setActiveCredit] = useState('Todos');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Map States
-  const [isMapOpen, setIsMapOpen] = useState(false);
-  const [selectedMapRestaurantId, setSelectedMapRestaurantId] = useState<string | null>(null);
-
   // Filtering Logic
   const filteredRestaurants = MOCK_RESTAURANTS.filter(r => {
     // Category Filter
@@ -24,7 +24,7 @@ export const Restaurants: React.FC = () => {
     // Search Filter
     const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Credit Filter (Simple Logic based on first item in menu for demo)
+    // Credit Filter
     const minDishCredits = Math.min(...r.menu.map(d => d.credits));
     let matchesCredit = true;
     if (activeCredit === '1 Crédito') matchesCredit = minDishCredits === 1;
@@ -34,8 +34,6 @@ export const Restaurants: React.FC = () => {
 
     return matchesCategory && matchesSearch && matchesCredit;
   });
-
-  const selectedMapRestaurant = MOCK_RESTAURANTS.find(r => r.id === selectedMapRestaurantId);
 
   return (
     <div className="min-h-screen bg-brand-50/30 dark:bg-gray-950 pb-24">
@@ -64,8 +62,8 @@ export const Restaurants: React.FC = () => {
               />
             </div>
             <button 
-              onClick={() => setIsMapOpen(true)}
-              className="bg-white dark:bg-gray-800 px-5 rounded-xl flex items-center gap-2 shadow-sm text-gray-700 dark:text-white font-medium text-sm backdrop-blur-sm bg-opacity-95 active:scale-95 transition-transform"
+              onClick={() => setSearchParams({ map: 'true' })}
+              className="bg-white dark:bg-gray-800 px-5 rounded-xl flex items-center gap-2 shadow-sm text-gray-700 dark:text-white font-medium text-sm backdrop-blur-sm bg-opacity-95 active:scale-95 transition-transform hover:bg-gray-50 dark:hover:bg-gray-700"
             >
               <Map className="w-5 h-5" />
               Mapa
@@ -182,124 +180,16 @@ export const Restaurants: React.FC = () => {
         </div>
       </div>
 
-      {/* MAP MODAL */}
+      {/* Modal de Mapa Global */}
       {isMapOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center animate-in fade-in duration-200">
-          <div 
-            className="bg-gray-100 dark:bg-gray-900 w-full h-[92vh] sm:h-[80vh] sm:max-w-2xl sm:rounded-3xl rounded-t-3xl relative overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom-10"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Map Header */}
-            <div className="absolute top-0 left-0 right-0 z-20 p-4 flex justify-between items-start pointer-events-none">
-              <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-sm pointer-events-auto">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-brand-500" />
-                  <div>
-                    <h2 className="font-bold text-gray-900 dark:text-white text-sm leading-tight">Mapa de Restaurantes</h2>
-                    <p className="text-[10px] text-gray-500">{filteredRestaurants.length} restaurantes encontrados</p>
-                  </div>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsMapOpen(false)} 
-                className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-2 rounded-full shadow-sm text-gray-500 hover:text-gray-900 dark:hover:text-white pointer-events-auto"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Map Area (Simulated) */}
-            <div className="flex-1 relative bg-[#e5e7eb] overflow-hidden" onClick={() => setSelectedMapRestaurantId(null)}>
-              {/* Map Background Tile (Static representation of a map) */}
-              <div 
-                className="absolute inset-0 opacity-80"
-                style={{
-                  backgroundImage: `url('https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/13/2411/3078.png')`, // Example tile pattern
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  filter: 'grayscale(0.2)'
-                }}
-              />
-              
-              {/* Zoom Controls */}
-              <div className="absolute top-24 left-4 flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden z-10">
-                <button className="p-2 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-200 dark:border-gray-700"><Plus className="w-4 h-4 text-gray-600 dark:text-gray-300" /></button>
-                <button className="p-2 hover:bg-gray-50 dark:hover:bg-gray-700"><Minus className="w-4 h-4 text-gray-600 dark:text-gray-300" /></button>
-              </div>
-
-              {/* Attribution */}
-              <div className="absolute bottom-1 right-1 bg-white/50 px-1 text-[8px] text-gray-600 z-0">
-                 Leaflet | © OpenStreetMap
-              </div>
-
-              {/* Restaurant Pins */}
-              {filteredRestaurants.map((r, index) => {
-                // Determine a pseudo-random position for demo purposes based on index
-                // In a real app, convert lat/lng to pixels
-                const top = 30 + (index * 15) + (Math.sin(index) * 10); 
-                const left = 20 + (index * 20) + (Math.cos(index) * 10);
-                
-                const isSelected = selectedMapRestaurantId === r.id;
-
-                return (
-                  <button
-                    key={r.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedMapRestaurantId(r.id);
-                    }}
-                    className="absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 z-10 group"
-                    style={{ top: `${top}%`, left: `${left}%` }}
-                  >
-                    {/* Tooltip Label */}
-                    <div className={`absolute -top-8 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-md whitespace-nowrap transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                      {r.name}
-                    </div>
-
-                    {/* Pin Icon */}
-                    <div className={`relative flex items-center justify-center transition-transform ${isSelected ? 'scale-125' : 'hover:scale-110'}`}>
-                       <div className={`w-10 h-10 rounded-full border-2 border-white dark:border-gray-900 shadow-lg flex items-center justify-center overflow-hidden bg-brand-500`}>
-                          <img src={r.image} alt="marker" className="w-full h-full object-cover opacity-80" />
-                       </div>
-                       {isSelected && (
-                         <div className="absolute -bottom-1 w-2 h-2 bg-brand-500 rotate-45 border-r border-b border-white dark:border-gray-900"></div>
-                       )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Selected Restaurant Card Overlay */}
-            {selectedMapRestaurant && (
-              <div className="absolute bottom-6 left-4 right-4 z-30 animate-in slide-in-from-bottom-5">
-                <div 
-                  onClick={() => navigate(`/restaurant/${selectedMapRestaurant.id}`)}
-                  className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-xl flex items-center gap-4 cursor-pointer active:scale-95 transition-transform"
-                >
-                  <img src={selectedMapRestaurant.image} className="w-16 h-16 rounded-xl object-cover" alt={selectedMapRestaurant.name} />
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-gray-900 dark:text-white">{selectedMapRestaurant.name}</h3>
-                      <div className="flex items-center gap-1 text-xs font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded">
-                        <Star className="w-3 h-3 fill-yellow-600" />
-                        {selectedMapRestaurant.rating}
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-2">{selectedMapRestaurant.category}</p>
-                    <div className="flex items-center gap-1 text-xs text-brand-500 font-bold">
-                      <span>Ver Cardápio</span>
-                      <Navigation className="w-3 h-3" />
-                    </div>
-                  </div>
-                  <button className="bg-brand-500 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
-                     <Plus className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <RestaurantMap 
+          restaurants={filteredRestaurants} 
+          onClose={() => {
+            // Remove map param but keep others? For simplicity, we can just navigate back to base or remove map param
+            searchParams.delete('map');
+            setSearchParams(searchParams);
+          }} 
+        />
       )}
     </div>
   );

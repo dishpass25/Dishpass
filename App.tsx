@@ -9,15 +9,6 @@ import { Credits } from './pages/Credits';
 import { Referrals } from './pages/Referrals';
 import { Community } from './pages/Community';
 import { Profile } from './pages/Profile';
-import { Scanner } from './pages/Scanner';
-
-const ProtectedStaffRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useApp();
-  if (!user.isRestaurantStaff) {
-    return <Navigate to="/" replace />;
-  }
-  return <>{children}</>;
-};
 
 const AppRoutes = () => {
   return (
@@ -29,11 +20,6 @@ const AppRoutes = () => {
       <Route path="/referrals" element={<Layout><Referrals /></Layout>} />
       <Route path="/community" element={<Layout><Community /></Layout>} />
       <Route path="/profile" element={<Layout><Profile /></Layout>} />
-      <Route path="/scanner" element={
-        <ProtectedStaffRoute>
-          <Scanner />
-        </ProtectedStaffRoute>
-      } />
     </Routes>
   );
 };

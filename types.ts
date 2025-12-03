@@ -1,3 +1,4 @@
+
 export interface Plan {
   id: string; // Internal ID (e.g., 'exp_unique', 'ess_weekly')
   name: string; // e.g., "Experiência"
@@ -57,6 +58,10 @@ export interface Restaurant {
   lat: number;
   lng: number;
   menu: Dish[];
+  // Novos campos para detalhes avançados
+  description: string;
+  openingHours: string;
+  services: string[]; // Ex: ['Wi-Fi', 'Pet Friendly', 'Ar Condicionado']
 }
 
 export interface Reservation {
