@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Reservation, Plan, Transaction } from './types';
 import { PLANS } from './constants';
@@ -44,10 +45,24 @@ const INITIAL_USER: User = {
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User>(INITIAL_USER);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  
+  // Theme Logic with System Detection & Persistence
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    // 1. Check LocalStorage
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('dishpass-theme');
+      if (savedTheme) return savedTheme as 'light' | 'dark';
+
+      // 2. Check System Preference
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+      }
+    }
+    return 'light';
+  });
   
   // Scanner State
   const [scanner, setScanner] = useState<{ isOpen: boolean; type: 'redeem' | 'validate' }>({ 
@@ -55,15 +70,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     type: 'redeem' 
   });
 
+  // Apply Theme Effect
   useEffect(() => {
+    const root = window.document.documentElement;
     if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
+      root.classList.add('dark');
     } else {
-      document.documentElement.classList.remove('dark');
+      root.classList.remove('dark');
     }
-    // Tentar pegar localização silenciosamente ao iniciar
-    requestUserLocation();
+    localStorage.setItem('dishpass-theme', theme);
   }, [theme]);
+
+  // Listen for System Changes (if no manual override is set)
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      // Only auto-switch if user hasn't manually set a preference in this session's logic
+      // OR you can decide to always respect system if "Auto" mode existed. 
+      // Here we prioritize checking if LS is empty implies "Auto" behavior.
+      if (!localStorage.getItem('dishpass-theme')) {
+        setTheme(e.matches ? 'dark' : 'light');
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    
+    // Initial location request
+    requestUserLocation();
+
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -151,22 +187,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Geolocation Service
   const requestUserLocation = async () => {
     if ('geolocation' in navigator) {
-      try {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setUserLocation({
-              lat: position.coords.latitude,
-              lng: position.coords.longitude
-            });
-          },
-          (error) => {
-            console.log("Error getting location", error);
-          },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-        );
-      } catch (e) {
-        console.error(e);
-      }
+      return new Promise<void>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              setUserLocation({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+              });
+              resolve();
+            },
+            (error) => {
+              console.log("Error getting location", error);
+              resolve(); // Resolve anyway to stop loading spinners
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+          );
+      });
     }
   };
 
