@@ -110,7 +110,7 @@ export const PLANS: Plan[] = [
     costPerCredit: 19.00,
     durationDays: 30,
     renewalPlanId: 'ess_monthly_std', 
-    description: 'Oferta especial de upgrade.',
+    description: '15% OFF no 1º mês. Depois 10% OFF.',
     isTrial: true,
     discountPercent: 15
   },
@@ -123,7 +123,7 @@ export const PLANS: Plan[] = [
     costPerCredit: 19.00,
     durationDays: 30,
     renewalPlanId: 'equi_monthly_std', 
-    description: 'Oferta especial de upgrade.',
+    description: '15% OFF no 1º mês. Depois 10% OFF.',
     isTrial: true,
     discountPercent: 15
   },
@@ -136,7 +136,7 @@ export const PLANS: Plan[] = [
     costPerCredit: 19.00,
     durationDays: 30,
     renewalPlanId: 'conv_monthly_std', 
-    description: 'Oferta especial de upgrade.',
+    description: '15% OFF no 1º mês. Depois 10% OFF.',
     isTrial: true,
     discountPercent: 15
   },
@@ -155,9 +155,24 @@ export const MOCK_RESTAURANTS: Restaurant[] = [
     lng: -49.3245,
     description: 'O maior restaurante das Américas, servindo a tradicional comida italiana com rodízio de massas e frango.',
     openingHours: '11:30 - 23:00',
-    services: ['Wi-Fi', 'Estacionamento', 'Área Kids'],
+    services: ['Wi-Fi', 'Estacionamento', 'Área Kids', 'Acessibilidade', 'Carta de Vinhos'],
     menu: [
       { id: 'd_cwb_1', name: 'Rodízio Italiano', description: 'Massas, frango e polenta frita à vontade.', credits: 3, image: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=400&q=80', calories: 1200 },
+      { id: 'd_cwb_1b', name: 'Polenta Frita Crocante', description: 'Porção generosa da tradicional polenta frita de Santa Felicidade.', credits: 1, image: 'https://images.unsplash.com/photo-1619684617152-16eb164627d2?auto=format&fit=crop&w=400&q=80', calories: 450 },
+      { id: 'd_cwb_1c', name: 'Lasanha na Manteiga', description: 'Lasanha clássica servida na manteiga dourada.', credits: 2, image: 'https://images.unsplash.com/photo-1574868233972-1e663c8e284f?auto=format&fit=crop&w=400&q=80', calories: 800 },
+      { id: 'd_cwb_1d', name: 'Risoto de Frango', description: 'Arroz arbóreo cremoso com cubos de frango e açafrão.', credits: 2, image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=400&q=80', calories: 600 },
+      { id: 'd_cwb_1e', name: 'Gnocchi ao Sugo', description: 'Nhoque artesanal de batata com molho de tomate caseiro.', credits: 2, image: 'https://images.unsplash.com/photo-1546549010-413bc4f41967?auto=format&fit=crop&w=400&q=80', calories: 550 },
+      { id: 'd_cwb_1f', name: 'Frango a Passarinho', description: 'Frango frito crocante temperado com alho e salsinha.', credits: 2, image: 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?auto=format&fit=crop&w=400&q=80', calories: 700 },
+      { id: 'd_cwb_1g', name: 'Salada Radicchio', description: 'Salada fresca de radicchio com bacon crocante.', credits: 1, image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=80', calories: 200 },
+      { id: 'd_cwb_1h', name: 'Spaghetti Alho e Óleo', description: 'Massa simples e deliciosa com alho dourado e azeite.', credits: 1, image: 'https://images.unsplash.com/photo-1555949258-eb67b1ef0ceb?auto=format&fit=crop&w=400&q=80', calories: 450 },
+      { id: 'd_cwb_1i', name: 'Tiramisu Clássico', description: 'Sobremesa italiana com café e queijo mascarpone.', credits: 2, image: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?auto=format&fit=crop&w=400&q=80', calories: 400 },
+      { id: 'd_cwb_1j', name: 'Vinho Tinto da Casa', description: 'Taça de vinho tinto colonial suave.', credits: 1, image: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=400&q=80', calories: 150 },
+      // Novos Pratos
+      { id: 'd_cwb_1k', name: 'Rondelli de Presunto', description: 'Massa enrolada recheada com presunto e queijo ao molho branco.', credits: 2, image: 'https://images.unsplash.com/photo-1587206668283-c21d974993c3?auto=format&fit=crop&w=400&q=80', calories: 750 },
+      { id: 'd_cwb_1l', name: 'Sopa de Capeletti', description: 'Caldo reconfortante com capeletti de carne.', credits: 1, image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=400&q=80', calories: 300 },
+      { id: 'd_cwb_1m', name: 'Frango Prensado', description: 'Peito de frango grelhado e prensado com ervas finas.', credits: 2, image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=400&q=80', calories: 500 },
+      { id: 'd_cwb_1n', name: 'Salada de Maionese', description: 'Clássica salada de batata com maionese caseira.', credits: 1, image: 'https://images.unsplash.com/photo-1623428187969-5da2dcea5ebf?auto=format&fit=crop&w=400&q=80', calories: 400 },
+      { id: 'd_cwb_1o', name: 'Sagu de Vinho', description: 'Sobremesa tradicional do sul com creme de baunilha.', credits: 1, image: 'https://images.unsplash.com/photo-1588610363991-817f7396a54f?auto=format&fit=crop&w=400&q=80', calories: 250 },
     ]
   },
   {
@@ -175,6 +190,7 @@ export const MOCK_RESTAURANTS: Restaurant[] = [
     menu: [
       { id: 'd_cwb_2', name: 'Carne de Onça', description: 'Tradicional petisco curitibano (Carne crua temperada).', credits: 2, image: 'https://images.unsplash.com/photo-1599351479261-12c8a162239c?auto=format&fit=crop&w=400&q=80', calories: 400 },
       { id: 'd_cwb_3', name: 'Submarino', description: 'Chopp com uma dose de steinhäger dentro.', credits: 1, image: 'https://images.unsplash.com/photo-1616951237198-c11649983944?auto=format&fit=crop&w=400&q=80', calories: 250 },
+      { id: 'd_cwb_2c', name: 'Eisbein (Joelho de Porco)', description: 'Joelho de porco pururuca com chucrute e batatas.', credits: 3, image: 'https://images.unsplash.com/photo-1626075677993-979929875e53?auto=format&fit=crop&w=400&q=80', calories: 1200 },
     ]
   },
   {
@@ -324,10 +340,21 @@ export const MOCK_RESTAURANTS: Restaurant[] = [
     lng: -46.5800,
     description: 'Culinária sertaneja premiada e acessível.',
     openingHours: '12:00 - 23:00',
-    services: ['Wi-Fi', 'Acessibilidade'],
+    services: ['Wi-Fi', 'Acessibilidade', 'Área Kids'],
     menu: [
       { id: 'd_sp_4', name: 'Dadinhos de Tapioca', description: 'O original, com geleia de pimenta.', credits: 1, image: 'https://images.unsplash.com/photo-1513442542250-854d436a73f2?auto=format&fit=crop&w=400&q=80', calories: 300 },
       { id: 'd_sp_4b', name: 'Baião de Dois', description: 'Arroz, feijão de corda, queijo coalho e carne seca', credits: 2, image: 'https://images.unsplash.com/photo-1626509653298-639433fce224?auto=format&fit=crop&w=400&q=80', calories: 800 },
+      { id: 'd_sp_4c', name: 'Escondidinho de Carne Seca', description: 'Cremoso purê de mandioca com recheio de carne seca.', credits: 2, image: 'https://images.unsplash.com/photo-1548943487-a2e4e43b485c?auto=format&fit=crop&w=400&q=80', calories: 650 },
+      { id: 'd_sp_4d', name: 'Torresmo Crocante', description: 'Porção de torresmo sequinho e crocante.', credits: 1, image: 'https://images.unsplash.com/photo-1606757303023-e40df5244510?auto=format&fit=crop&w=400&q=80', calories: 500 },
+      { id: 'd_sp_4e', name: 'Mocotó Completo', description: 'Caldo rico de mocotó servido com pão artesanal.', credits: 2, image: 'https://images.unsplash.com/photo-1574484284008-86d47dc6b5d3?auto=format&fit=crop&w=400&q=80', calories: 550 },
+      { id: 'd_sp_4f', name: 'Costelinha de Porco', description: 'Costelinha suína assada lentamente com melaço de cana.', credits: 3, image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=400&q=80', calories: 900 },
+      { id: 'd_sp_4g', name: 'Feijão de Corda', description: 'Porção extra de feijão de corda temperado.', credits: 1, image: 'https://images.unsplash.com/photo-1551326844-f459e292fd79?auto=format&fit=crop&w=400&q=80', calories: 300 },
+      { id: 'd_sp_4h', name: 'Pudim de Tapioca', description: 'Sobremesa cremosa com calda de caramelo e coco.', credits: 1, image: 'https://images.unsplash.com/photo-1514843319620-4f042827c481?auto=format&fit=crop&w=400&q=80', calories: 350 },
+      { id: 'd_sp_4i', name: 'Caipirinha de Três Limões', description: 'Drink refrescante com cachaça artesanal e mix de limões.', credits: 2, image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=400&q=80', calories: 200 },
+      // Novos Pratos
+      { id: 'd_sp_4j', name: 'Carne de Sol na Nata', description: 'Carne de sol desfiada servida com nata fresca.', credits: 2, image: 'https://images.unsplash.com/photo-1604908177453-7462950a6a3b?auto=format&fit=crop&w=400&q=80', calories: 600 },
+      { id: 'd_sp_4k', name: 'Cuscuz Nordestino', description: 'Cuscuz de milho com manteiga de garrafa e queijo.', credits: 1, image: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=400&q=80', calories: 400 },
+      { id: 'd_sp_4l', name: 'Bolo de Rolo', description: 'Fatia de bolo de rolo tradicional de goiabada.', credits: 1, image: 'https://images.unsplash.com/photo-1598155523122-38423bb4d6c1?auto=format&fit=crop&w=400&q=80', calories: 350 },
     ]
   },
   {
@@ -345,22 +372,18 @@ export const MOCK_RESTAURANTS: Restaurant[] = [
     menu: [
        { id: 'd_sp_5a', name: 'Prato Feito Tradicional', description: 'Arroz, feijão, bife acebolado, batata frita e salada', credits: 1, image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=400&q=80', calories: 650 },
        { id: 'd_sp_5b', name: 'Macarrão ao Molho Vermelho', description: 'Macarrão penne com molho de tomate caseiro e queijo ralado', credits: 1, image: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=400&q=80', calories: 500 },
-       { id: 'd_sp_5c', name: 'Frango Grelhado com Legumes', description: 'Peito de frango grelhado com mix de legumes no vapor', credits: 2, image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=400&q=80', calories: 450 },
-       { id: 'd_sp_5d', name: 'Salada Caesar com Frango', description: 'Alface romana, frango grelhado, croutons e molho caesar', credits: 1, image: 'https://images.unsplash.com/photo-1550304943-4f24f54ddde9?auto=format&fit=crop&w=400&q=80', calories: 350 },
-       { id: 'd_sp_5e', name: 'Feijoada Completa', description: 'Feijoada com todos os acompanhamentos: arroz, couve, farofa e laranja', credits: 3, image: 'https://images.unsplash.com/photo-1574653853117-0274131c2175?auto=format&fit=crop&w=400&q=80', calories: 950 },
-       { id: 'd_sp_5f', name: 'Bacalhau à Portuguesa', description: 'Bacalhau assado com batatas, pimentões, ovos e azeitonas', credits: 3, image: 'https://images.unsplash.com/photo-1551062068-d05a415951d6?auto=format&fit=crop&w=400&q=80', calories: 750 },
-       { id: 'd_sp_5g', name: 'Ravioli de Pato com Trufa', description: 'Ravioli recheado de pato confit com molho de trufa negra', credits: 3, image: 'https://images.unsplash.com/photo-1588723205096-65482c9f9111?auto=format&fit=crop&w=400&q=80', calories: 600 },
-       { id: 'd_sp_5h', name: 'Polvo Grelhado', description: 'Polvo macio grelhado com batatas confitadas e azeite aromatizado', credits: 3, image: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=400&q=80', calories: 500 },
+       { id: 'd_sp_5c', name: 'Frango Grelhado com Legumes', description: 'Peito de frango grelhado com mix de legumes', credits: 1, image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=400&q=80', calories: 400 },
     ]
   }
 ];
 
 export const MOCK_REVIEWS: Review[] = [
-  { id: 'rv1', userName: 'Carlos M.', dishName: 'Carne de Onça', rating: 5, text: 'Melhor de Curitiba!', image: 'https://images.unsplash.com/photo-1599351479261-12c8a162239c?auto=format&fit=crop&w=200&q=80', date: 'Ontem' },
-  { id: 'rv2', userName: 'Ana P.', dishName: 'Porco San Zé', rating: 5, text: 'Experiência incrível na Casa do Porco.', image: 'https://images.unsplash.com/photo-1624726175512-19c9746903ce?auto=format&fit=crop&w=200&q=80', date: '3 dias atrás' },
+  { id: 'rv1', restaurantId: 'r_cwb_1', userName: 'Maria Silva', dishName: 'Rodízio Italiano', rating: 5, text: 'Simplesmente incrível! A polenta frita é de outro mundo.', image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=80', date: 'Há 2 dias' },
+  { id: 'rv2', restaurantId: 'r_cwb_2', userName: 'João Souza', dishName: 'Carne de Onça', rating: 4, text: 'Muito saborosa, mas achei a porção pequena para dividir.', image: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=400&q=80', date: 'Há 5 dias' },
+  { id: 'rv3', restaurantId: 'r_cwb_1', userName: 'Ana Paula', rating: 5, text: 'Melhor lugar de Santa Felicidade.', date: 'Há 1 semana' }, // Sem foto
 ];
 
 export const MOCK_REFERRALS: Referral[] = [
-  { id: 'ref1', name: 'João Silva', status: 'joined', date: '2023-10-15' },
-  { id: 'ref2', name: 'Maria Souza', status: 'pending', date: '2023-10-20' },
+  { id: 'ref1', name: 'Ana Clara', status: 'joined', date: '12/10/2023' },
+  { id: 'ref2', name: 'Pedro Henrique', status: 'pending', date: '14/10/2023' },
 ];

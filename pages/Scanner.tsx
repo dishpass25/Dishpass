@@ -1,19 +1,23 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { useApp } from '../context';
 import jsQR from 'jsqr';
+import { ReviewForm } from '../components/ReviewComponents';
 
-// Agora exportamos como um componente Modal, não uma página
 export const ScannerModal: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { deductCredits, closeScanner, scanner } = useApp();
-  const { type, isOpen } = scanner;
+  const { type, isOpen, restaurantId, dishId } = scanner;
   
   const [loadingCamera, setLoadingCamera] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<{ status: 'success' | 'error', message: string } | null>(null);
   const [isScanning, setIsScanning] = useState(true);
+  
+  // New State: Review Mode
+  const [showReview, setShowReview] = useState(false);
 
   // Reset state when opening
   useEffect(() => {
@@ -22,11 +26,12 @@ export const ScannerModal: React.FC = () => {
       setScanResult(null);
       setError(null);
       setLoadingCamera(true);
+      setShowReview(false);
     }
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || showReview) return; // Stop camera if in review mode
 
     let stream: MediaStream | null = null;
     let animationFrameId: number;
@@ -39,7 +44,7 @@ export const ScannerModal: React.FC = () => {
         
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.setAttribute("playsinline", "true"); // required for iOS
+          videoRef.current.setAttribute("playsinline", "true"); 
           
           videoRef.current.onloadedmetadata = () => {
              setLoadingCamera(false);
@@ -91,7 +96,7 @@ export const ScannerModal: React.FC = () => {
       }
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isScanning, isOpen]);
+  }, [isScanning, isOpen, showReview]);
 
   const handleScan = (data: string) => {
     setIsScanning(false);
@@ -99,6 +104,8 @@ export const ScannerModal: React.FC = () => {
     // Simulação de processamento
     setTimeout(() => {
         if (type === 'redeem') {
+             // Em um app real, o ID do restaurante viria do QR Code (data)
+             // Aqui usaremos o que veio do contexto (aberto via botão da Home/Card) ou fallback
              const success = deductCredits(1);
              if (success) {
                  setScanResult({
@@ -131,26 +138,40 @@ export const ScannerModal: React.FC = () => {
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose}></div>
       
-      {/* Modal Container - Styled to match image */}
-      <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl relative z-10 flex flex-col animate-in zoom-in-95 duration-300">
+      {/* Modal Container */}
+      <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl relative z-10 flex flex-col animate-in zoom-in-95 duration-300 min-h-[450px]">
         
-        {/* Header */}
-        <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-gray-800">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            Escanear QR Code
-          </h2>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+        {/* Header (Hide in Review Mode for cleaner look) */}
+        {!showReview && (
+          <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-800">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Escanear QR
+            </h2>
+            <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        )}
 
         {/* Content */}
-        <div className="p-8 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 min-h-[350px]">
+        <div className="p-6 flex-1 flex flex-col bg-gray-50 dark:bg-gray-950">
           
           <canvas ref={canvasRef} className="hidden" />
 
-          {isScanning ? (
-            <div className="relative w-64 h-64 bg-black rounded-3xl overflow-hidden shadow-inner flex items-center justify-center">
+          {showReview && restaurantId ? (
+              // REVIEW FORM
+              <ReviewForm 
+                restaurantId={restaurantId} 
+                dishId={dishId}
+                onClose={handleClose} 
+                onSuccess={() => {
+                    alert("Obrigado pela avaliação!");
+                    handleClose();
+                }} 
+              />
+          ) : isScanning ? (
+            // CAMERA VIEW
+            <div className="relative w-full flex-1 bg-black rounded-2xl overflow-hidden shadow-inner flex items-center justify-center min-h-[300px]">
               
               {!error ? (
                  <video 
@@ -161,20 +182,20 @@ export const ScannerModal: React.FC = () => {
                  />
               ) : (
                 <div className="text-center p-4">
-                   <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-2" />
-                   <p className="text-xs text-white">{error}</p>
+                   <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+                   <p className="text-base text-white font-medium">{error}</p>
                 </div>
               )}
 
-              {/* Scanning Line Animation */}
+              {/* Scanning Animation */}
               {!error && !loadingCamera && (
                 <div className="absolute inset-0 z-10">
                    <div className="w-full h-1 bg-brand-500/80 shadow-[0_0_15px_rgba(249,115,22,0.8)] animate-[scan_2s_ease-in-out_infinite] absolute top-0" />
                    {/* Corner markers */}
-                   <div className="absolute top-4 left-4 w-8 h-8 border-t-4 border-l-4 border-white/50 rounded-tl-lg"></div>
-                   <div className="absolute top-4 right-4 w-8 h-8 border-t-4 border-r-4 border-white/50 rounded-tr-lg"></div>
-                   <div className="absolute bottom-4 left-4 w-8 h-8 border-b-4 border-l-4 border-white/50 rounded-bl-lg"></div>
-                   <div className="absolute bottom-4 right-4 w-8 h-8 border-b-4 border-r-4 border-white/50 rounded-br-lg"></div>
+                   <div className="absolute top-5 left-5 w-10 h-10 border-t-4 border-l-4 border-white/50 rounded-tl-lg"></div>
+                   <div className="absolute top-5 right-5 w-10 h-10 border-t-4 border-r-4 border-white/50 rounded-tr-lg"></div>
+                   <div className="absolute bottom-5 left-5 w-10 h-10 border-b-4 border-l-4 border-white/50 rounded-bl-lg"></div>
+                   <div className="absolute bottom-5 right-5 w-10 h-10 border-b-4 border-r-4 border-white/50 rounded-br-lg"></div>
                 </div>
               )}
 
@@ -185,37 +206,48 @@ export const ScannerModal: React.FC = () => {
               )}
             </div>
           ) : (
-            // Result View
-            <div className="flex flex-col items-center justify-center w-full h-64 animate-in zoom-in">
+            // RESULT SUCCESS/ERROR VIEW
+            <div className="flex flex-col items-center justify-center w-full h-full animate-in zoom-in py-8">
                {scanResult?.status === 'success' ? (
                  <>
-                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                     <Check className="w-10 h-10 text-green-600" />
+                   <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-5">
+                     <Check className="w-12 h-12 text-green-600" />
                    </div>
-                   <p className="text-center font-bold text-gray-900 dark:text-white text-lg mb-1">Sucesso!</p>
-                   <p className="text-center text-sm text-gray-500 mb-6">{scanResult.message}</p>
+                   <p className="text-center font-bold text-gray-900 dark:text-white text-2xl mb-2">Sucesso!</p>
+                   <p className="text-center text-lg text-gray-500 mb-8 font-medium">{scanResult.message}</p>
+                   
+                   {/* Se for Redeem e tivermos o ID do restaurante (passado via contexto), mostra botão de avaliar */}
+                   {type === 'redeem' && restaurantId && (
+                       <button 
+                         onClick={() => setShowReview(true)}
+                         className="w-full bg-brand-600 hover:bg-brand-700 text-white px-8 py-4 rounded-xl font-bold text-lg transition-colors mb-3 shadow-lg shadow-brand-500/30"
+                       >
+                         Avaliar Experiência
+                       </button>
+                   )}
                  </>
                ) : (
                  <>
-                   <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                     <AlertTriangle className="w-10 h-10 text-red-500" />
+                   <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-5">
+                     <AlertTriangle className="w-12 h-12 text-red-500" />
                    </div>
-                   <p className="text-center font-bold text-gray-900 dark:text-white text-lg mb-1">Ops!</p>
-                   <p className="text-center text-sm text-gray-500 mb-6">{scanResult?.message}</p>
+                   <p className="text-center font-bold text-gray-900 dark:text-white text-2xl mb-2">Ops!</p>
+                   <p className="text-center text-lg text-gray-500 mb-8 font-medium">{scanResult?.message}</p>
                  </>
                )}
+               
                <button 
-                 onClick={() => { setIsScanning(true); setScanResult(null); }}
-                 className="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white px-6 py-2 rounded-xl font-bold text-sm"
+                 onClick={handleClose} // Fechar direto
+                 className="w-full text-center text-gray-500 font-bold py-3"
                >
-                 Escanear Novamente
+                 Fechar
                </button>
             </div>
           )}
 
-          {/* Footer Text */}
-          {isScanning && (
-            <p className="mt-6 text-sm text-gray-500 text-center font-medium">
+          {/* Footer Text for Scanning */}
+          {isScanning && !showReview && (
+            <p className="mt-6 text-lg text-gray-500 text-center font-bold">
               Aponte a câmera para o QR Code
             </p>
           )}

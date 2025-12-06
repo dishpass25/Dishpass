@@ -13,14 +13,17 @@ export interface Plan {
   discountPercent?: number;
 }
 
+export type PaymentMethod = 'credit_card' | 'debit_card' | 'pix';
+
 export interface Transaction {
   id: string;
   userId: string;
-  planId: string;
-  planName: string;
+  planId?: string; // Optional for credit packs
+  planName: string; // Or "Pacote de Créditos"
   amount: number;
   date: string;
-  type: 'purchase' | 'renewal';
+  type: 'purchase' | 'renewal' | 'credits_refill';
+  paymentMethod?: PaymentMethod;
 }
 
 export interface User {
@@ -31,12 +34,22 @@ export interface User {
   referralCode: string;
   isRestaurantStaff: boolean;
   avatar: string;
+  hasSeenOnboarding?: boolean; // Flag para tutorial inicial
   
   // Subscription Fields
   subscriptionStatus: 'none' | 'trial' | 'active' | 'cancelled' | 'overdue';
   currentPlanId?: string;
   nextBillingDate?: string; // ISO Date
   nextBillingAmount?: number;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+  date: string;
+  read: boolean;
 }
 
 export interface Dish {
@@ -83,10 +96,13 @@ export interface Referral {
 
 export interface Review {
   id: string;
+  restaurantId: string; // Vínculo com o restaurante
   userName: string;
-  dishName: string;
+  userAvatar?: string;
+  dishName?: string;
   rating: number;
   text: string;
-  image: string;
+  image?: string; // Opcional
   date: string;
+  isHidden?: boolean; // Controle de moderação (Admin)
 }

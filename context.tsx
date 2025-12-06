@@ -1,10 +1,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Reservation, Plan, Transaction } from './types';
-import { PLANS } from './constants';
+import { User, Reservation, Plan, Transaction, PaymentMethod, Review, Notification } from './types';
+import { PLANS, MOCK_REVIEWS, MOCK_RESTAURANTS } from './constants';
 
 interface AppContextType {
   user: User;
+  completeOnboarding: () => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   toggleStaffMode: () => void;
@@ -13,15 +14,28 @@ interface AppContextType {
   
   // New Workflow Methods
   plans: Plan[];
-  buyPlan: (planId: string) => void;
+  buyPlan: (planId: string, paymentMethod: PaymentMethod) => void;
   cancelSubscription: () => void;
+  applyRetentionOffer: () => void;
   deductCredits: (amount: number) => boolean;
-  addCredits: (amount: number) => void;
+  addCredits: (amount: number, price: number, paymentMethod: PaymentMethod) => void;
   transactions: Transaction[];
 
+  // Notifications
+  notifications: Notification[];
+  addNotification: (title: string, message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
+  markNotificationsAsRead: () => void;
+  clearNotifications: () => void;
+
+  // Reviews & Community
+  reviews: Review[];
+  addReview: (review: Omit<Review, 'id' | 'date' | 'userName' | 'userAvatar'>) => void;
+  getRestaurantRating: (restaurantId: string) => number;
+  reportReview: (reviewId: string) => void; 
+
   // Scanner Control
-  scanner: { isOpen: boolean; type: 'redeem' | 'validate' };
-  openScanner: (type: 'redeem' | 'validate') => void;
+  scanner: { isOpen: boolean; type: 'redeem' | 'validate'; dishId?: string; restaurantId?: string };
+  openScanner: (type: 'redeem' | 'validate', restaurantId?: string, dishId?: string) => void;
   closeScanner: () => void;
 
   // Geolocation
@@ -36,19 +50,52 @@ const INITIAL_USER: User = {
   id: 'u1',
   name: 'Alex Johnson',
   email: 'alex@dishpass.com',
-  credits: 0, 
+  credits: 5, // Dando alguns créditos iniciais para facilitar testes
   referralCode: 'ALEX2024',
   isRestaurantStaff: false,
   avatar: 'https://picsum.photos/100/100?random=50',
   subscriptionStatus: 'none',
+  hasSeenOnboarding: false,
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User>(INITIAL_USER);
+  const [user, setUser] = useState<User>(() => {
+    // Tenta recuperar estado do onboarding
+    if (typeof window !== 'undefined') {
+        const hasSeen = localStorage.getItem('dishpass-onboarding') === 'true';
+        return { ...INITIAL_USER, hasSeenOnboarding: hasSeen };
+    }
+    return INITIAL_USER;
+  });
+
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [reviews, setReviews] = useState<Review[]>(MOCK_REVIEWS);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   
+  // Notifications State with Persistence
+  const [notifications, setNotifications] = useState<Notification[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dishpass-notifications');
+      if (saved) return JSON.parse(saved);
+    }
+    return [
+      {
+        id: 'welcome_msg',
+        title: 'Bem-vindo ao DISHpass!',
+        message: 'Você ganhou acesso ao plano Experiência. Aproveite seus créditos.',
+        type: 'info',
+        date: new Date().toISOString(),
+        read: false
+      }
+    ];
+  });
+
+  // Save notifications
+  useEffect(() => {
+    localStorage.setItem('dishpass-notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
   // Theme Logic with System Detection & Persistence
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     // 1. Check LocalStorage
@@ -65,7 +112,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   
   // Scanner State
-  const [scanner, setScanner] = useState<{ isOpen: boolean; type: 'redeem' | 'validate' }>({ 
+  const [scanner, setScanner] = useState<{ isOpen: boolean; type: 'redeem' | 'validate'; dishId?: string; restaurantId?: string }>({ 
     isOpen: false, 
     type: 'redeem' 
   });
@@ -81,21 +128,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('dishpass-theme', theme);
   }, [theme]);
 
-  // Listen for System Changes (if no manual override is set)
+  // Listen for System Changes
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e: MediaQueryListEvent) => {
-      // Only auto-switch if user hasn't manually set a preference in this session's logic
-      // OR you can decide to always respect system if "Auto" mode existed. 
-      // Here we prioritize checking if LS is empty implies "Auto" behavior.
       if (!localStorage.getItem('dishpass-theme')) {
         setTheme(e.matches ? 'dark' : 'light');
       }
     };
     
     mediaQuery.addEventListener('change', handleChange);
-    
-    // Initial location request
     requestUserLocation();
 
     return () => mediaQuery.removeEventListener('change', handleChange);
@@ -109,32 +151,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUser(prev => ({ ...prev, isRestaurantStaff: !prev.isRestaurantStaff }));
   };
 
+  const completeOnboarding = () => {
+    setUser(prev => ({ ...prev, hasSeenOnboarding: true }));
+    localStorage.setItem('dishpass-onboarding', 'true');
+  };
+
   const addReservation = (res: Reservation) => {
     setReservations(prev => [...prev, res]);
+    addNotification('Reserva Confirmada', `Sua reserva em ${res.restaurantName} foi realizada.`, 'success');
+  };
+
+  // --- NOTIFICATION HELPERS ---
+  const addNotification = (title: string, message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    const newNotif: Notification = {
+      id: Math.random().toString(36).substr(2, 9),
+      title,
+      message,
+      type,
+      date: new Date().toISOString(),
+      read: false
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+  };
+
+  const markNotificationsAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const clearNotifications = () => {
+    setNotifications([]);
   };
 
   // 3.1 & 3.2 Workflow: Buy Plan (Initial or Upsell)
-  const buyPlan = (planId: string) => {
+  const buyPlan = (planId: string, paymentMethod: PaymentMethod) => {
     const plan = PLANS.find(p => p.id === planId);
     if (!plan) return;
 
-    // Calculate Next Billing Date
-    const nextBilling = new Date();
-    nextBilling.setDate(nextBilling.getDate() + plan.durationDays);
+    const isNewSubscription = user.subscriptionStatus === 'none' || user.subscriptionStatus === 'cancelled';
 
-    // Determine Status (Trial vs Active)
+    // Se for assinatura nova, define data de hoje + duração.
+    // Se for troca de plano, MANTÉM a data de renovação atual (ciclo vigente).
+    let nextBillingDate = user.nextBillingDate;
+    
+    if (isNewSubscription) {
+        const d = new Date();
+        d.setDate(d.getDate() + plan.durationDays);
+        nextBillingDate = d.toISOString();
+    }
+
+    // Determine Status
     const newStatus = plan.id === 'exp_unique' ? 'trial' : 'active';
-
-    // Find the renewal plan for the *next* cycle to set the correct next billing amount
     const renewalPlanId = plan.renewalPlanId || plan.id;
     const renewalPlan = PLANS.find(p => p.id === renewalPlanId);
 
     setUser(prev => ({
       ...prev,
-      credits: prev.credits + plan.credits, // 2. Allocation of Credits
+      credits: isNewSubscription ? prev.credits + plan.credits : prev.credits, 
       currentPlanId: plan.id,
       subscriptionStatus: newStatus,
-      nextBillingDate: nextBilling.toISOString(), // 3. Set Date
+      nextBillingDate: nextBillingDate,
       nextBillingAmount: renewalPlan ? renewalPlan.price : plan.price,
     }));
 
@@ -146,12 +221,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       planName: plan.name,
       amount: plan.price,
       date: new Date().toISOString(),
-      type: 'purchase'
+      type: 'purchase',
+      paymentMethod
     };
     setTransactions(prev => [newTx, ...prev]);
+
+    // TRIGGER NOTIFICATION
+    if (isNewSubscription) {
+      addNotification('Plano Ativado!', `Você assinou o plano ${plan.name} com sucesso. ${plan.credits} créditos adicionados.`, 'success');
+    } else {
+      addNotification('Troca de Plano', `Seu plano foi atualizado para ${plan.name}.`, 'success');
+    }
   };
 
-  // 3.2 Cancellation
   const cancelSubscription = () => {
     setUser(prev => ({
       ...prev,
@@ -159,32 +241,91 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       nextBillingDate: undefined,
       nextBillingAmount: undefined,
     }));
+    addNotification('Assinatura Cancelada', 'Sua assinatura foi cancelada. Sentiremos sua falta.', 'warning');
   };
 
-  // 3.4 Workflow: Consumo de Crédito
+  const applyRetentionOffer = () => {
+    if (user.nextBillingAmount) {
+        setUser(prev => ({
+            ...prev,
+            nextBillingAmount: prev.nextBillingAmount ? prev.nextBillingAmount * 0.7 : undefined // 30% OFF
+        }));
+        addNotification('Oferta Aplicada!', 'Desconto de 30% aplicado na próxima renovação.', 'success');
+    }
+  };
+
   const deductCredits = (amount: number) => {
     if (user.credits >= amount) {
       setUser(prev => ({ ...prev, credits: prev.credits - amount }));
+      addNotification('Crédito Utilizado', `Você usou ${amount} crédito(s). Bom apetite!`, 'success');
       return true;
     }
+    addNotification('Saldo Insuficiente', 'Você não possui créditos suficientes para esta operação.', 'error');
     return false;
   };
 
-  // Helper for admin/debug
-  const addCredits = (amount: number) => {
+  const addCredits = (amount: number, price: number, paymentMethod: PaymentMethod) => {
     setUser(prev => ({ ...prev, credits: prev.credits + amount }));
+    
+    const newTx: Transaction = {
+      id: Math.random().toString(36).substr(2, 9),
+      userId: user.id,
+      planName: `Pacote Avulso (${amount} un)`,
+      amount: price,
+      date: new Date().toISOString(),
+      type: 'credits_refill',
+      paymentMethod
+    };
+    setTransactions(prev => [newTx, ...prev]);
+    addNotification('Créditos Adicionados', `Compra de ${amount} créditos realizada com sucesso.`, 'success');
+  };
+
+  // --- REVIEWS LOGIC ---
+
+  const addReview = (reviewData: Omit<Review, 'id' | 'date' | 'userName' | 'userAvatar'>) => {
+     const newReview: Review = {
+        id: Math.random().toString(36).substr(2, 9),
+        date: new Date().toISOString(), // "Agora"
+        userName: user.name,
+        userAvatar: user.avatar,
+        ...reviewData,
+     };
+     setReviews(prev => [newReview, ...prev]);
+     addNotification('Avaliação Publicada', 'Obrigado por compartilhar sua experiência com a comunidade!', 'success');
+  };
+
+  // Calcula a média ponderada do restaurante (Mock Base + Reviews Reais)
+  const getRestaurantRating = (restaurantId: string) => {
+     const restaurant = MOCK_RESTAURANTS.find(r => r.id === restaurantId);
+     const restaurantReviews = reviews.filter(r => r.restaurantId === restaurantId && !r.isHidden);
+     
+     if (!restaurant) return 0;
+     
+     // Se não tem reviews novas, usa a do mock
+     if (restaurantReviews.length === 0) return restaurant.rating;
+
+     const totalStars = restaurantReviews.reduce((acc, curr) => acc + curr.rating, 0);
+     const avgReviews = totalStars / restaurantReviews.length;
+     
+     // Média simples entre a nota original (histórica) e as novas (recentes)
+     // Num sistema real, seria tudo recalculado do zero.
+     return parseFloat(((restaurant.rating + avgReviews) / 2).toFixed(1));
+  };
+
+  // Admin Policy: Hide review
+  const reportReview = (reviewId: string) => {
+    setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, isHidden: true } : r));
   };
 
   // Scanner Actions
-  const openScanner = (type: 'redeem' | 'validate') => {
-    setScanner({ isOpen: true, type });
+  const openScanner = (type: 'redeem' | 'validate', restaurantId?: string, dishId?: string) => {
+    setScanner({ isOpen: true, type, restaurantId, dishId });
   };
   
   const closeScanner = () => {
-    setScanner(prev => ({ ...prev, isOpen: false }));
+    setScanner(prev => ({ ...prev, isOpen: false, restaurantId: undefined, dishId: undefined }));
   };
 
-  // Geolocation Service
   const requestUserLocation = async () => {
     if ('geolocation' in navigator) {
       return new Promise<void>((resolve, reject) => {
@@ -198,7 +339,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             },
             (error) => {
               console.log("Error getting location", error);
-              resolve(); // Resolve anyway to stop loading spinners
+              resolve(); 
             },
             { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
           );
@@ -209,6 +350,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider value={{
       user,
+      completeOnboarding,
       theme,
       toggleTheme,
       toggleStaffMode,
@@ -217,9 +359,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       plans: PLANS,
       buyPlan,
       cancelSubscription,
+      applyRetentionOffer,
       deductCredits,
       addCredits,
       transactions,
+      notifications,
+      addNotification,
+      markNotificationsAsRead,
+      clearNotifications,
+      reviews,
+      addReview,
+      getRestaurantRating,
+      reportReview,
       scanner,
       openScanner,
       closeScanner,
